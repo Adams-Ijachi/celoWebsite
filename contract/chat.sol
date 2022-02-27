@@ -195,10 +195,18 @@ contract Chat {
         string text;
         uint256 timestamp;
     }
+    
+    struct PublicMessage{
+        address sender;
+        string text;
+        uint256 timestamp;
+    }
 
     mapping(address => address) internal addresses;
     mapping(address => mapping(uint256 => Message)) internal messages;
+    mapping(address => mapping(uint256 => PublicMessage)) internal publicMessages;
     mapping(address => uint256) internal messageAmounts;
+    mapping(address => uint256) internal publicMessagesAmount;
 
     // assigns an address to an address if there's one waiting,
     // if not, it makes the sender address the address that is waiting
@@ -229,19 +237,32 @@ contract Chat {
 
     // writes a message to someone
     function writeMessage(string memory _text) public {
-        if (isAddressAssigned()) {
-            address destination = addresses[msg.sender];
-            messages[destination][messageAmounts[destination]++] = Message(
-                msg.sender,
-                _text,
-                block.timestamp
-            );
-        }
+        require(isAddressAssigned(),"Address is Not Assigned");
+        address destination = addresses[msg.sender];
+        messages[destination][messageAmounts[destination]++] = Message(
+            msg.sender,
+            _text,
+            block.timestamp
+        );
+        
     }
+    
+    // Create A public message
+    function writePublicMessage(string memory _text) public {
+        address destination = addresses[msg.sender];
+        publicMessages[destination][publicMessagesAmount[destination]++] = PublicMessage(
+            msg.sender,
+            _text,
+            block.timestamp
+        );
+        
+    }
+    
 
     // transfers funds and sends a confirmation message to someone
     function transferFunds(uint256 _amount) public payable {
-        if (isAddressAssigned()) {
+        require(isAddressAssigned(),"Address is Not Assigned");
+        
             require(
                 IERC20Token(cUsdTokenAddress).transferFrom(
                     msg.sender,
@@ -251,12 +272,17 @@ contract Chat {
                 "Transfer failed."
             );
             writeMessage(string(abi.encodePacked("cUSD--", uint2str(_amount))));
-        }
+        
     }
 
     // gets the length of the received message mapping of an adress
     function getReceivedMessageCount() public view returns (uint256) {
         return (messageAmounts[msg.sender]);
+    }
+
+    // get public messages length
+    function getPublicMessagesCount() public view returns (uint256) {
+        return (publicMessagesAmount[addresses[msg.sender]]);
     }
 
     // gets the length of the sent message mapping of an adress
@@ -336,4 +362,6 @@ contract Chat {
         }
         return string(bstr);
     }
+
+    
 }
